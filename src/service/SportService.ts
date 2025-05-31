@@ -460,8 +460,8 @@ const fovoritAnise = async (last14Matches: any): Promise<void> => {
         const outsider = lastFifa.p1_koeff > lastFifa.p2_koeff ? 'П1' : 'П2';
         const reason =
             streakType === 'fav_win'
-                ? `✅ Oxirgi ${streakCount} ta o‘yinda favoritlar g‘alaba qozondi`
-                : `❌ Oxirgi ${streakCount} ta o‘yinda favoritlar mag‘lub bo‘ldi`;
+                ? `❌ Oxirgi ${streakCount} ta o‘yinda favoritlar mag‘lub bo‘ldi`
+                : `✅ Oxirgi ${streakCount} ta o‘yinda favoritlar g‘alaba qozondi`
 
         const text = `📢 <b>Favorit Strategiyasi</b> 🧠
 
