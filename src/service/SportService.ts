@@ -408,8 +408,8 @@ ${icon} Вряд ${streakCount} игры было ${prev}
 <b>Update time:</b> ${getTime(new Date())}`;
 
         if (!strategy.message_id) {
-            const message_id = await sendTg('@fifa_18_analiz', text, '7609032453:AAGJ1c1bQLV9ZS5VBqYOUS4iwwcSOkXNCLs', undefined);
-            await sendTg('@sport_uz_yagonabet', text, '7609032453:AAGJ1c1bQLV9ZS5VBqYOUS4iwwcSOkXNCLs', undefined);
+            const message_id = await sendTg('@fifa_18_analiz', text, "7609032453:AAGJ1c1bQLV9ZS5VBqYOUS4iwwcSOkXNCLs", undefined);
+            await sendTg('@sport_uz_yagonabet', text, "7609032453:AAGJ1c1bQLV9ZS5VBqYOUS4iwwcSOkXNCLs", undefined);
 
             if (message_id) {
                 strategy.message_id = message_id;
@@ -501,7 +501,6 @@ const fovoritAnise = async (last14Matches: any): Promise<void> => {
         }
     }
 }
-
 
 const sendTg = async (chatId: string, message: string, token: string, messageId?: number): Promise<number | null> => {
     const url = `https://api.telegram.org/bot${token}/sendMessage`;
