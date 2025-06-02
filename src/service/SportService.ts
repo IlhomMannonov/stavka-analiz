@@ -222,7 +222,7 @@ cron.schedule('*/10 * * * * *', async () => {
         await teamAnalise(last14Matches);
 
         await totalAnise(last14Matches);
-        await fovoritAnise(last14Matches);
+        await detectFavoriteStreak(last14Matches);
 
 
     } catch (error) {
@@ -321,11 +321,11 @@ const teamAnalise = async (last14Matches: any): Promise<any> => {
             strategy = await strategyRepository.save(new_strategy);
         }
 
-        const text = `📢 **Хушхабар!** 🚨
+        const text = `📢 Стратегия на Победу🚨
 
-🎯 ${old_win_team} кетма-кет ${win_count} та ғалаба қўзонди! 🎉
+🎯 ${old_win_team} Победила Вряд ${win_count} раз🎉
 
-🔥 Эндi ${win_team} ғалабасининг эҳтимоли <b>${win_percentage}</b>%! 💥
+🔥 Теперь дагон на ${win_team}  <b>${win_percentage}</b>%! 💥
 
 
 #N${lastFifa.game_number} <b>${lastFifa.team1}</b> <b>( - )</b> <b>${lastFifa.team2}</b>
@@ -418,89 +418,87 @@ ${icon} Вряд ${streakCount} игры было ${prev}
         }
     }
 };
+const detectFavoriteStreak = async (lastMatches: any[]): Promise<void> => {
+    let streakType: 'favorite' | 'outsider' | null = null
+    let streakCount = 0
 
-const fovoritAnise = async (last14Matches: any): Promise<void> => {
-    let streakCount = 0;
+    for (const match of lastMatches) {
+        const resultArray = match.result?.trim().split(' - ').map(Number)
+        if (!resultArray || resultArray.length !== 2) continue
 
-    for (let i = 0; i < last14Matches.length; i++) {
-        const match = last14Matches[i];
-        const resultArray = match.result?.trim().split(' - ').map(Number);
-        if (!resultArray || resultArray.length !== 2) continue;
+        const [score1, score2] = resultArray
+        const { p1_koeff, p2_koeff } = match
 
-        const [team1Score, team2Score] = resultArray;
-        const { p1_koeff, p2_koeff } = match;
-
-        // 1. Favorit aniqlash
-        const favorite = p1_koeff < p2_koeff ? 'team1' : 'team2';
-
-        // 2. G‘olib aniqlash
         const winner =
-            team1Score === team2Score ? 'draw' :
-                team1Score > team2Score ? 'team1' : 'team2';
+            score1 === score2 ? 'draw' :
+                score1 > score2 ? 'team1' : 'team2'
 
-        // 3. Durang bo‘lsa — ketma-ketlik to‘xtaydi
-        if (winner === 'draw') break;
+        if (winner === 'draw') break
 
-        // 4. Favorit yutdimi?
-        const isFavoriteWon = favorite === winner;
+        const favorite = p1_koeff < p2_koeff ? 'team1' : 'team2'
+        const isFavoriteWin = favorite === winner
 
-        if (!isFavoriteWon) {
-            streakCount++;
+        const currentType = isFavoriteWin ? 'favorite' : 'outsider'
+
+        if (streakType === null || streakType === currentType) {
+            streakType = currentType
+            streakCount++
         } else {
-            break; // favorit yutib qo‘ydi – streak tugadi
+            break
         }
     }
 
-    // 5. Agar 5 ta ketma-ket favorit yutqazgan bo‘lsa – signal
-    if (streakCount >= 5) {
-        const lastFifa = await get_fifa_last();
-        if (!lastFifa) return;
+    if (streakCount >= 5 && streakType) {
+        const lastFifa = await get_fifa_last()
+        if (!lastFifa) return
 
-        const outsider = lastFifa.p1_koeff > lastFifa.p2_koeff ? 'П1' : 'П2';
+        const nextPick =
+            streakType === 'favorite'
+                ? lastFifa.p1_koeff > lastFifa.p2_koeff ? 'П1' : 'П2'
+                : lastFifa.p1_koeff < lastFifa.p2_koeff ? 'П1' : 'П2'
 
-        const text = `📢 <b>Стратегия на Фаворит🧠</b>
+        const text = `📢 <b>Стратегия на ${streakType === 'favorite' ? 'Фаворита' : 'Аутсайдера'}🧠</b>
 
-❌ Фаворит вряд ${streakCount} раз проиграл 😔
+${streakType === 'favorite' ? '✅' : '❌'} ${streakType === 'favorite' ? 'Фаворит' : 'Аутсайдер'} ${streakCount} раз выиграл
 
-➡️ ${streakCount + 1} игры Дагоном на победу Фоворита👉 <b>${outsider}</b>
+➡️ ${streakCount + 1}-игра: победа <b>${nextPick}</b>
 
 #N${lastFifa.game_number} <b>${lastFifa.team1}</b> <b>( - )</b> <b>${lastFifa.team2}</b>
 <b>П1</b>: ${lastFifa.p1_koeff} | <b>П2</b>: ${lastFifa.p2_koeff}
 <b>Update:</b> ${getTime(new Date())}`
 
-        // Strategy bazasiga yozish
-        let strategy = await strategyRepository.findOne({ where: { match_id: lastFifa.match_id } });
-
+        let strategy = await strategyRepository.findOne({ where: { match_id: lastFifa.match_id } })
         if (!strategy) {
-            const new_strategy = new Strategy();
-            new_strategy.game_number = lastFifa.game_number;
-            new_strategy.match_id = lastFifa.match_id;
-            new_strategy.team1 = lastFifa.team1;
-            new_strategy.team1_id = lastFifa.team1_id;
-            new_strategy.team2 = lastFifa.team2;
-            new_strategy.team2_id = lastFifa.team2_id;
-            new_strategy.start_time = new Date(lastFifa.start_time);
-            new_strategy.status = lastFifa.status;
-            new_strategy.result = lastFifa.result;
-            new_strategy.p1_koeff = lastFifa.p1_koeff;
-            new_strategy.p2_koeff = lastFifa.p2_koeff;
-            new_strategy.total_over = lastFifa.total_over;
-            new_strategy.total_under = lastFifa.total_under;
-            strategy = await strategyRepository.save(new_strategy);
+            const new_strategy = strategyRepository.create({
+                game_number: lastFifa.game_number,
+                match_id: lastFifa.match_id,
+                team1: lastFifa.team1,
+                team1_id: lastFifa.team1_id,
+                team2: lastFifa.team2,
+                team2_id: lastFifa.team2_id,
+                start_time: new Date(lastFifa.start_time),
+                status: lastFifa.status,
+                result: lastFifa.result,
+                p1_koeff: lastFifa.p1_koeff,
+                p2_koeff: lastFifa.p2_koeff,
+                total_over: lastFifa.total_over,
+                total_under: lastFifa.total_under,
+            })
+            strategy = await strategyRepository.save(new_strategy)
         }
 
-        // Telegramga signal yuborish
         if (!strategy.message_id) {
-            const message_id = await sendTg('@fifa_18_analiz', text, "7609032453:AAGJ1c1bQLV9ZS5VBqYOUS4iwwcSOkXNCLs", undefined);
-            await sendTg('@sport_uz_yagonabet', text, "7609032453:AAGJ1c1bQLV9ZS5VBqYOUS4iwwcSOkXNCLs", undefined);
+            const message_id = await sendTg('@fifa_18_analiz', text, '7609032453:AAGJ1c1bQLV9ZS5VBqYOUS4iwwcSOkXNCLs')
+            await sendTg('@sport_uz_yagonabet', text, '7609032453:AAGJ1c1bQLV9ZS5VBqYOUS4iwwcSOkXNCLs')
 
             if (message_id) {
-                strategy.message_id = message_id;
-                await strategyRepository.save(strategy);
+                strategy.message_id = message_id
+                await strategyRepository.save(strategy)
             }
         }
     }
 }
+
 
 const sendTg = async (chatId: string, message: string, token: string, messageId?: number): Promise<number | null> => {
     const url = `https://api.telegram.org/bot${token}/sendMessage`;
